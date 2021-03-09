@@ -1,0 +1,29 @@
+port = {{ PORT|default('33445') }}
+
+keys_file_path = "{{ KEYS_FILE_PATH|default('/var/lib/tox-bootstrapd/keys') }}"
+
+pid_file_path = "{{ PID_FILE_PATH|default('/var/run/tox-bootstrapd/tox-bootstrapd.pid') }}"
+
+enable_ipv6 = {{ ENABLE_IPV6|default('true') }}
+
+enable_ipv4_fallback = {{ ENABLE_IPV4_FALLBACK|default('true') }}
+
+enable_lan_discovery = {{ ENABLE_LAN_DISCOVERY|default('false') }}
+
+enable_tcp_relay = {{ ENABLE_TCP_RELAY|default('true') }}
+
+tcp_relay_ports = {{ TCP_RELAY_PORTS|default('[3389, 33445]') }}
+
+enable_motd = {{ ENABLE_MOTD|default('true') }}
+
+motd = "{{ MOTD|default('tox-bootstrapd') }}"
+
+bootstrap_nodes = (
+{%- for node in json_data.nodes %}
+   {
+        public_key="{{ node.public_key }}",
+        address="{{ node.ipv4 }}",
+        port={{ node.port }}
+   }{% if not loop.last %},{% endif %}
+{%- endfor %}
+)
