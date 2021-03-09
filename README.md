@@ -11,7 +11,7 @@ docker run -d -p 33445:33445 -p 33445:33445/udp -p 3389:3389 \
   -e CONFIG=/etc/tox-bootstapd.conf \
   dm2mf/tox
 ````
-# Run with existing `keys` file in /var/lib/tox-bootstrapd
+# Run with existing `keys` file in `/var/lib/tox-bootstrapd`
 ````
 docker run -d -p 33445:33445 -p 33445:33445/udp -p 3389:3389 \
  -v /var/lib/tox-bootstrapd/keys:/var/lib/tox-bootstrapd/keys \
