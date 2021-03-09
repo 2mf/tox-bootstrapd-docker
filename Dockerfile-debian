@@ -1,17 +1,20 @@
-FROM alpine:3.13 as build
+FROM debian:buster-slim as build
 
 ENV TOX_VERSION v0.2.12
 
-RUN apk add libsodium-dev libvpx-dev opus-dev cmake autoconf libtool automake gcc g++ libconfig-dev make file linux-headers git
 RUN mkdir -p /build
-RUN cd /build && \
+COPY build /build/
+RUN chmod +x /build/*.sh
+RUN apt update && apt-get install -y libsodium-dev libvpx-dev libopus-dev cmake autoconf libtool automake gcc g++ libconfig-dev make file linux-headers-$(/build/linux-headers.sh) git
+RUN mkdir -p /build && \
+ cd /build && \
  git clone https://github.com/TokTok/c-toxcore -b ${TOX_VERSION} c-toxcore && \
  cd c-toxcore && \
  autoreconf -vif && ./configure --enable-static=true --disable-shared --enable-daemon --enable-dht-bootstrap && \
  make -j2
 
-FROM alpine:3.13
-RUN apk add libsodium libconfig bash py3-jinja2 py3-requests
+FROM debian:buster-slim
+RUN apt update && apt-get install -y libsodium23 libconfig9 bash python3-jinja2 python3-requests
 RUN mkdir -p /opt/tox /var/lib/tox-bootstrapd /etc
 
 COPY --from=build /build/c-toxcore/build/tox-bootstrapd /opt/tox/
@@ -25,7 +28,7 @@ ENV ENABLE_IPV6 true
 ENV ENABLE_IPV4_FALLBACK true
 ENV ENABLE_LAN_DISCOVERY false
 ENV ENABLE_TCP_RELAY true
-ENV TCP_RELAY_PORTS "[3389,33456]"
+ENV TCP_RELAY_PORTS "[3389,33455]"
 ENV ENABLE_MOTD true
 ENV MOTD tox-bootstrapd
 
@@ -33,5 +36,9 @@ ADD entrypoint.sh /entrypoint.sh
 ADD tox-bootstrapd.conf.j2 /opt/tox/tox-bootstrapd.conf.j2
 ADD render.py /opt/tox/render.py
 RUN chmod +x /entrypoint.sh /opt/tox/render.py
+
+EXPOSE 3389/tcp
+EXPOSE 33445/tcp
+EXPOSE 33445/udp
 
 ENTRYPOINT /entrypoint.sh
