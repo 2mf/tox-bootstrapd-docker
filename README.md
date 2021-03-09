@@ -2,7 +2,7 @@
 run Tox node in Docker
 
 # Public images
-docker pull dm2mf/tox
+`docker pull dm2mf/tox`
 
 # Run
 ````
