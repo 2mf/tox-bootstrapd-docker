@@ -1,10 +1,8 @@
-# tox-docker
-run Tox node in Docker
-
-# Public images
+# run tox-bootstrapd in Docker with low maintenance
+## Public images
 `docker pull dm2mf/tox-bootstrapd`
 
-# Run
+## Run
 ````
 docker run -d -p 33445:33445 -p 33445:33445/udp -p 3389:3389 dm2mf/tox-bootstrapd
 ````
