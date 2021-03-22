@@ -18,12 +18,23 @@ enable_motd = {{ ENABLE_MOTD|default('true') }}
 
 motd = "{{ MOTD|default('tox-bootstrapd') }}"
 
+{%- set ipv6 = ENABLE_IPV6|default('true') %}
+{%- set ipv4_fallback = ENABLE_IPV4_FALLBACK|default('true') %}
+
 bootstrap_nodes = (
 {%- for node in json_data.nodes %}
+{%- if (ipv6 == 'true' and node.ipv6 and node.ipv6 != '-' and node.ipv6 != 'NONE') %}
+   {
+        public_key="{{ node.public_key }}",
+        address="{{ node.ipv6 }}",
+        port={{ node.port }}
+   }{% if not loop.last %},{% endif %}
+{%- elif (ipv4_fallback == 'true' or ipv6 == 'false') and node.ipv4 != '-' and node.ipv4 != 'NONE' %}
    {
         public_key="{{ node.public_key }}",
         address="{{ node.ipv4 }}",
         port={{ node.port }}
    }{% if not loop.last %},{% endif %}
+{%- endif %}
 {%- endfor %}
 )
