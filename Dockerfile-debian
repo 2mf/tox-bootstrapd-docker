@@ -1,6 +1,6 @@
-FROM debian:buster-slim as build
+FROM debian:bullseye-slim as build
 
-ENV TOX_VERSION v0.2.12
+ENV TOX_VERSION v0.2.13
 
 RUN mkdir -p /build
 COPY build /build/
