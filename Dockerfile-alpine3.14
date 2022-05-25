@@ -1,11 +1,11 @@
 FROM alpine:3.14 as build
 
-ENV TOX_VERSION v0.2.13
+ENV TOX_VERSION v0.2.18
 
 RUN apk add libsodium-dev libvpx-dev opus-dev cmake autoconf libtool automake gcc g++ libconfig-dev make file linux-headers git
 RUN mkdir -p /build
 RUN cd /build && \
- git clone https://github.com/TokTok/c-toxcore -b ${TOX_VERSION} c-toxcore && \
+ git clone https://github.com/TokTok/c-toxcore --recursive -b ${TOX_VERSION} c-toxcore && \
  cd c-toxcore && \
  autoreconf -vif && ./configure --enable-static=true --disable-shared --enable-daemon --enable-dht-bootstrap && \
  make -j2
