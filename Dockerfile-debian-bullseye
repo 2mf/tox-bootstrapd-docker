@@ -1,4 +1,4 @@
-FROM debian:bookworm-slim as build
+FROM debian:bullseye-slim as build
 
 ENV TOX_VERSION v0.2.18
 
@@ -13,7 +13,7 @@ RUN mkdir -p /build && \
  autoreconf -vif && ./configure --enable-static=true --disable-shared --enable-daemon --enable-dht-bootstrap && \
  make -j2
 
-FROM debian:bookworm-slim
+FROM debian:bullseye-slim
 RUN apt update && apt-get install -y libsodium23 libconfig9 bash python3-jinja2 python3-requests
 RUN mkdir -p /opt/tox /var/lib/tox-bootstrapd /etc
 
