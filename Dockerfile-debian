@@ -1,6 +1,6 @@
 FROM debian:bookworm-slim as build
 
-ENV TOX_VERSION v0.2.18
+ENV TOX_VERSION v0.2.19
 
 RUN mkdir -p /build
 COPY build /build/

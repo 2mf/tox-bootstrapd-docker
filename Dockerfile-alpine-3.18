@@ -1,20 +1,17 @@
-FROM debian:buster-slim as build
+FROM alpine:3.18 as build
 
-ENV TOX_VERSION v0.2.18
+ENV TOX_VERSION v0.2.19
 
+RUN apk add libsodium-dev libvpx-dev opus-dev cmake autoconf libtool automake gcc g++ libconfig-dev make file linux-headers git
 RUN mkdir -p /build
-COPY build /build/
-RUN chmod +x /build/*.sh
-RUN apt update && apt-get install -y libsodium-dev libvpx-dev libopus-dev cmake autoconf libtool automake gcc g++ libconfig-dev make file linux-headers-$(/build/linux-headers.sh) git
-RUN mkdir -p /build && \
- cd /build && \
+RUN cd /build && \
  git clone https://github.com/TokTok/c-toxcore --recursive -b ${TOX_VERSION} c-toxcore && \
  cd c-toxcore && \
  autoreconf -vif && ./configure --enable-static=true --disable-shared --enable-daemon --enable-dht-bootstrap && \
  make -j2
 
-FROM debian:buster-slim
-RUN apt update && apt-get install -y libsodium23 libconfig9 bash python3-jinja2 python3-requests
+FROM alpine:3.18
+RUN apk add libsodium libconfig bash py3-jinja2 py3-requests
 RUN mkdir -p /opt/tox /var/lib/tox-bootstrapd /etc
 
 COPY --from=build /build/c-toxcore/build/tox-bootstrapd /opt/tox/
