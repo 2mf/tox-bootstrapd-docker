@@ -1,6 +1,6 @@
-FROM alpine:3.21 as build
+FROM alpine:3.21 AS build
 
-ENV TOX_VERSION v0.2.21
+ENV TOX_VERSION=v0.2.21
 
 RUN apk add libsodium-dev libvpx-dev opus-dev cmake autoconf libtool automake gcc g++ libconfig-dev make file linux-headers git
 RUN mkdir -p /build
@@ -17,17 +17,17 @@ RUN mkdir -p /opt/tox /var/lib/tox-bootstrapd /etc
 COPY --from=build /build/c-toxcore/build/tox-bootstrapd /opt/tox/
 COPY --from=build /build/c-toxcore/other/bootstrap_daemon/tox-bootstrapd.conf /opt/tox/tox-bootstrapd.conf
 
-ENV NODES_URL https://nodes.tox.chat/json \
-  PORT 33445 \
-  KEYS_FILE_PATH '/var/lib/tox-bootstrapd/keys' \
-  PID_FILE_PATH '/var/run/tox-bootstrapd/tox-bootstrapd.pid' \
-  ENABLE_IPV6 true \
-  ENABLE_IPV4_FALLBACK true \
-  ENABLE_LAN_DISCOVERY false \
-  ENABLE_TCP_RELAY true \
-  TCP_RELAY_PORTS "[3389,33445]" \
-  ENABLE_MOTD true \
-  MOTD tox-bootstrapd
+ENV NODES_URL=https://nodes.tox.chat/json \
+  PORT=33445 \
+  KEYS_FILE_PATH='/var/lib/tox-bootstrapd/keys' \
+  PID_FILE_PATH='/var/run/tox-bootstrapd/tox-bootstrapd.pid' \
+  ENABLE_IPV6=true \
+  ENABLE_IPV4_FALLBACK=true \
+  ENABLE_LAN_DISCOVERY=false \
+  ENABLE_TCP_RELAY=true \
+  TCP_RELAY_PORTS="[3389,33445]" \
+  ENABLE_MOTD=true \
+  MOTD=tox-bootstrapd
 
 ADD entrypoint.sh /entrypoint.sh
 ADD tox-bootstrapd.conf.j2 /opt/tox/tox-bootstrapd.conf.j2
