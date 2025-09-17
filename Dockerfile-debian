@@ -1,4 +1,4 @@
-FROM debian:bookworm-slim AS build
+FROM debian:trixie-slim AS build
 
 ENV TOX_VERSION=v0.2.21
 
@@ -13,8 +13,8 @@ RUN mkdir -p /build && \
  autoreconf -vif && ./configure --enable-static=true --disable-shared --enable-daemon --enable-dht-bootstrap && \
  make -j2
 
-FROM debian:bookworm-slim
-RUN apt update && apt-get install -y libsodium23 libconfig9 bash python3-jinja2 python3-requests
+FROM debian:trixie-slim
+RUN apt update && apt-get install -y libsodium23 libconfig11 bash python3-jinja2 python3-requests
 RUN mkdir -p /opt/tox /var/lib/tox-bootstrapd /etc
 
 COPY --from=build /build/c-toxcore/build/tox-bootstrapd /opt/tox/
