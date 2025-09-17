@@ -38,4 +38,4 @@ EXPOSE 3389/tcp
 EXPOSE 33445/tcp
 EXPOSE 33445/udp
 
-ENTRYPOINT /entrypoint.sh
+ENTRYPOINT ["/entrypoint.sh"]
