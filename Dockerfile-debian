@@ -1,6 +1,6 @@
 FROM debian:trixie-slim AS build
 
-ENV TOX_VERSION=v0.2.21
+ENV TOX_VERSION=v0.2.22
 
 RUN mkdir -p /build
 COPY build /build/

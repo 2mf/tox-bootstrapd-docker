@@ -1,6 +1,6 @@
 FROM alpine:3.23 AS build
 
-ENV TOX_VERSION=v0.2.21
+ENV TOX_VERSION=v0.2.22
 
 RUN apk add libsodium-dev libvpx-dev opus-dev cmake autoconf libtool automake gcc g++ libconfig-dev make file linux-headers git
 RUN mkdir -p /build
