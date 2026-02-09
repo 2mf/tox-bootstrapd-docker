@@ -1,4 +1,4 @@
-FROM alpine:3.22 AS build
+FROM alpine:3.23 AS build
 
 ENV TOX_VERSION=v0.2.21
 
@@ -10,7 +10,7 @@ RUN cd /build && \
  autoreconf -vif && ./configure --enable-static=true --disable-shared --enable-daemon --enable-dht-bootstrap && \
  make -j2
 
-FROM alpine:3.22
+FROM alpine:3.23
 RUN apk add libsodium libconfig bash py3-jinja2 py3-requests
 RUN mkdir -p /opt/tox /var/lib/tox-bootstrapd /etc
 
