@@ -1,4 +1,4 @@
-#!/bin.sh
+#!/bin/sh
 architecture=""
 case $(dpkg --print-architecture) in
     amd64)   architecture="amd64" ;;
