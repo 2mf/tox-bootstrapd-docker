@@ -2,19 +2,41 @@ FROM alpine:3.23 AS build
 
 ENV TOX_VERSION=v0.2.23
 
-RUN apk add libsodium-dev libvpx-dev opus-dev cmake autoconf libtool automake gcc g++ libconfig-dev make file linux-headers git
-RUN mkdir -p /build
-RUN cd /build && \
- git clone https://github.com/TokTok/c-toxcore --recursive -b ${TOX_VERSION} c-toxcore && \
- cd c-toxcore && \
- autoreconf -vif && ./configure --enable-static=true --disable-shared --enable-daemon --enable-dht-bootstrap && \
- make -j2
+RUN apk add --no-cache \
+    build-base \
+    cmake \
+    git \
+    linux-headers \
+    pkgconf \
+    libsodium-dev \
+    libsodium-static \
+    libconfig-dev \
+    libconfig-static \
+    binutils \
+    file
+
+RUN mkdir -p /build \
+ && cd /build \
+ && git clone https://github.com/TokTok/c-toxcore --recursive -b ${TOX_VERSION} c-toxcore \
+ && cd c-toxcore \
+ && cmake -S . -B build \
+      -DCMAKE_BUILD_TYPE=Release \
+      -DENABLE_SHARED=OFF \
+      -DENABLE_STATIC=ON \
+      -DBOOTSTRAP_DAEMON=ON \
+      -DBUILD_TOXAV=OFF \
+      -DUNITTEST=OFF \
+      -DCMAKE_EXE_LINKER_FLAGS="-static" \
+    && cmake --build build --parallel \
+    && cmake --install build --prefix /build/out \
+    && test -x /build/out/bin/tox-bootstrapd
 
 FROM alpine:3.23
-RUN apk add libsodium libconfig bash py3-jinja2 py3-requests
+
+RUN apk add bash py3-jinja2 py3-requests
 RUN mkdir -p /opt/tox /var/lib/tox-bootstrapd /etc
 
-COPY --from=build /build/c-toxcore/build/tox-bootstrapd /opt/tox/
+COPY --from=build /build/out/bin/tox-bootstrapd /opt/tox/tox-bootstrapd
 COPY --from=build /build/c-toxcore/other/bootstrap_daemon/tox-bootstrapd.conf /opt/tox/tox-bootstrapd.conf
 
 ENV NODES_URL=https://nodes.tox.chat/json \

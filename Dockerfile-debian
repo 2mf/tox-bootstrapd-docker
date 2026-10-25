@@ -3,21 +3,38 @@ FROM debian:trixie-slim AS build
 ENV TOX_VERSION=v0.2.23
 
 RUN mkdir -p /build
-COPY build /build/
-RUN chmod +x /build/*.sh
-RUN apt update && apt-get install -y libsodium-dev libvpx-dev libopus-dev cmake autoconf libtool automake gcc g++ libconfig-dev make file linux-headers-$(/build/linux-headers.sh) git
-RUN mkdir -p /build && \
- cd /build && \
- git clone https://github.com/TokTok/c-toxcore --recursive -b ${TOX_VERSION} c-toxcore && \
- cd c-toxcore && \
- autoreconf -vif && ./configure --enable-static=true --disable-shared --enable-daemon --enable-dht-bootstrap && \
- make -j2
+
+RUN apt update && apt install -y \
+    build-essential \
+    cmake \
+    git \
+    pkgconf \
+    libsodium-dev \
+    libconfig-dev \
+    libtool \
+    file
+
+RUN mkdir -p /build \
+ && cd /build \
+ && git clone https://github.com/TokTok/c-toxcore --recursive -b ${TOX_VERSION} c-toxcore \
+ && cd c-toxcore \
+ && cmake -S . -B build \
+      -DCMAKE_BUILD_TYPE=Release \
+      -DENABLE_SHARED=OFF \
+      -DENABLE_STATIC=ON \
+      -DBOOTSTRAP_DAEMON=ON \
+      -DBUILD_TOXAV=OFF \
+      -DUNITTEST=OFF \
+      -DCMAKE_EXE_LINKER_FLAGS="-static" \
+    && cmake --build build --parallel \
+    && cmake --install build --prefix /build/out \
+    && test -x /build/out/bin/tox-bootstrapd
 
 FROM debian:trixie-slim
-RUN apt update && apt-get install -y libsodium23 libconfig11 bash python3-jinja2 python3-requests
+RUN apt update && apt-get install -y  bash python3-jinja2 python3-requests
 RUN mkdir -p /opt/tox /var/lib/tox-bootstrapd /etc
 
-COPY --from=build /build/c-toxcore/build/tox-bootstrapd /opt/tox/
+COPY --from=build /build/out/bin/tox-bootstrapd /opt/tox/
 COPY --from=build /build/c-toxcore/other/bootstrap_daemon/tox-bootstrapd.conf /opt/tox/tox-bootstrapd.conf
 
 ENV NODES_URL=https://nodes.tox.chat/json \
