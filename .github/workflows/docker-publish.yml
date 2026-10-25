@@ -1,0 +1,128 @@
+name: Build and publish Docker images
+
+on:
+  release:
+    types: [published]
+  push:
+    branches:
+      - dev
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    # Only publish production tags from a release whose target is master.
+    if: >-
+      github.event_name == 'release' &&
+      github.event.release.target_commitish == 'master'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the release tag
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - name: Load build versions
+        shell: bash
+        run: |
+          grep -Ev '^[[:space:]]*(#|$)' build/image-versions.env >> "$GITHUB_ENV"
+
+          RELEASE_VERSION="${{ github.event.release.tag_name }}"
+          echo "IMAGE_VERSION=${RELEASE_VERSION#v}" >> "$GITHUB_ENV"
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push Debian images
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: Dockerfile-debian
+          push: true
+          platforms: linux/amd64,linux/arm64/v8,linux/arm/v7,linux/arm/v5,linux/riscv64
+          build-args: |
+            TOX_VERSION=${{ env.TOX_VERSION }}
+            DEBIAN_VERSION=${{ env.DEBIAN_VERSION }}
+          tags: |
+            dm2mf/tox-bootstrapd:debian
+            dm2mf/tox-bootstrapd:debian-trixie
+            dm2mf/tox-bootstrapd:${{ env.IMAGE_VERSION }}-debian
+            dm2mf/tox:debian
+            dm2mf/tox:debian-trixie
+            dm2mf/tox:${{ env.IMAGE_VERSION }}-debian
+
+      - name: Build and push Alpine images
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: Dockerfile-alpine
+          push: true
+          platforms: linux/amd64,linux/arm64/v8,linux/arm/v6,linux/arm/v7,linux/riscv64
+          build-args: |
+            TOX_VERSION=${{ env.TOX_VERSION }}
+            ALPINE_VERSION=${{ env.ALPINE_VERSION }}
+          tags: |
+            dm2mf/tox-bootstrapd:alpine${{ env.ALPINE_VERSION }}
+            dm2mf/tox-bootstrapd:alpine
+            dm2mf/tox-bootstrapd:${{ env.IMAGE_VERSION }}-alpine
+            dm2mf/tox-bootstrapd:latest
+            dm2mf/tox:alpine${{ env.ALPINE_VERSION }}
+            dm2mf/tox:alpine
+            dm2mf/tox:${{ env.IMAGE_VERSION }}-alpine
+            dm2mf/tox:latest
+
+  dev:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out dev
+        uses: actions/checkout@v6
+
+      - name: Load build versions
+        shell: bash
+        run: |
+          grep -Ev '^[[:space:]]*(#|$)' build/image-versions.env >> "$GITHUB_ENV"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push Debian testing image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: Dockerfile-debian
+          push: true
+          platforms: linux/amd64
+          build-args: |
+            TOX_VERSION=${{ env.TOX_VERSION }}
+            DEBIAN_VERSION=${{ env.DEBIAN_VERSION }}
+          tags: dm2mf/tox-bootstrapd:debian-testing
+
+      - name: Build and push Alpine testing image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: Dockerfile-alpine
+          push: true
+          platforms: linux/amd64
+          build-args: |
+            TOX_VERSION=${{ env.TOX_VERSION }}
+            ALPINE_VERSION=${{ env.ALPINE_VERSION }}
+          tags: dm2mf/tox-bootstrapd:alpine-testing
