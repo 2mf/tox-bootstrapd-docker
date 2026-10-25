@@ -1,6 +1,7 @@
-FROM alpine:3.23 AS build
+ARG TOX_VERISON
+ARG ALPINE_VERSION
 
-ENV TOX_VERSION=v0.2.23
+FROM alpine:$(ALPINE_VERSION) AS build
 
 RUN apk add --no-cache \
     build-base \
@@ -16,10 +17,10 @@ RUN apk add --no-cache \
     file
 
 RUN mkdir -p /build \
- && cd /build \
- && git clone https://github.com/TokTok/c-toxcore --recursive -b ${TOX_VERSION} c-toxcore \
- && cd c-toxcore \
- && cmake -S . -B build \
+  && cd /build \
+  && git clone https://github.com/TokTok/c-toxcore --recursive -b $(TOX_VERSION) c-toxcore \
+  && cd c-toxcore \
+  && cmake -S . -B build \
       -DCMAKE_BUILD_TYPE=Release \
       -DENABLE_SHARED=OFF \
       -DENABLE_STATIC=ON \
@@ -27,11 +28,11 @@ RUN mkdir -p /build \
       -DBUILD_TOXAV=OFF \
       -DUNITTEST=OFF \
       -DCMAKE_EXE_LINKER_FLAGS="-static" \
-    && cmake --build build --parallel \
-    && cmake --install build --prefix /build/out \
-    && test -x /build/out/bin/tox-bootstrapd
+  && cmake --build build --parallel \
+  && cmake --install build --prefix /build/out \
+  && test -x /build/out/bin/tox-bootstrapd
 
-FROM alpine:3.23
+FROM alpine:$(ALPINE_VERSION)
 
 RUN apk add bash py3-jinja2 py3-requests
 RUN mkdir -p /opt/tox /var/lib/tox-bootstrapd /etc
