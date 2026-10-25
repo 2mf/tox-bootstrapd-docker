@@ -1,8 +1,8 @@
-ARG TOX_VERSION
 ARG DEBIAN_VERSION
 
 FROM debian:${DEBIAN_VERSION} AS build
 
+ARG TOX_VERSION
 ENV TOX_VERSION=${TOX_VERSION}
 
 RUN mkdir -p /build
@@ -19,7 +19,7 @@ RUN apt update && apt install -y \
 
 RUN mkdir -p /build \
   && cd /build \
-  && git clone https://github.com/TokTok/c-toxcore --recursive -b ${TOX_VERSION} c-toxcore \
+  && git clone https://github.com/TokTok/c-toxcore --recursive -b $TOX_VERSION c-toxcore \
   && cd c-toxcore \
   && cmake -S . -B build \
       -DCMAKE_BUILD_TYPE=Release \

@@ -1,8 +1,8 @@
-ARG TOX_VERISON
 ARG ALPINE_VERSION
 
 FROM alpine:${ALPINE_VERSION} AS build
 
+ARG TOX_VERSION
 ENV TOX_VERSION=${TOX_VERSION}
 
 RUN apk add --no-cache \
@@ -20,7 +20,7 @@ RUN apk add --no-cache \
 
 RUN mkdir -p /build \
   && cd /build \
-  && git clone https://github.com/TokTok/c-toxcore --recursive -b ${TOX_VERSION} c-toxcore \
+  && git clone https://github.com/TokTok/c-toxcore --recursive -b $TOX_VERSION c-toxcore \
   && cd c-toxcore \
   && cmake -S . -B build \
       -DCMAKE_BUILD_TYPE=Release \
