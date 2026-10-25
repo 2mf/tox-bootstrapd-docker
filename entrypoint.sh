@@ -1,7 +1,8 @@
-#!/bin/bash
+#!/bin/sh
 set -e
 if [ -z ${CONFIG+x} ]; then
-   /opt/tox/render.py -e PORT,KEYS_FILE_PATH,PID_FILE_PATH,ENABLE_IPV6,ENABLE_IPV4_FALLBACK,ENABLE_LAN_DISCOVERY,ENABLE_TCP_RELAY,TCP_RELAY_PORTS,ENABLE_MOTD,MOTD -o /etc/tox-bootstrapd.conf /opt/tox/tox-bootstrapd.conf.j2 ${NODES_URL}
+  curl --fail --silent --show-error --location --retry 3 --retry-connrefused https://nodes.tox.chat/json \
+  | p2 --format json --include-env --template /opt/tox/tox-bootstrapd.conf.j2 --output /etc/tox-bootstrapd.conf
 fi
 
-/opt/tox/tox-bootstrapd --foreground --config=${CONFIG:-/etc/tox-bootstrapd.conf} --log-backend=stdout
+/usr/local/bin/tox-bootstrapd --foreground --config=${CONFIG:-/etc/tox-bootstrapd.conf} --log-backend=stdout

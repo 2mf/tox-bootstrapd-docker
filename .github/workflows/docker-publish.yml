@@ -53,7 +53,11 @@ jobs:
           platforms: linux/amd64,linux/arm64/v8,linux/arm/v7,linux/arm/v5,linux/riscv64
           build-args: |
             TOX_VERSION=${{ env.TOX_VERSION }}
+            ALPINE_VERSION=${{ env.ALPINE_VERSION }}
             DEBIAN_VERSION=${{ env.DEBIAN_VERSION }}
+            GOLANG_VERSION=${{ env.GOLANG_VERSION }}
+            P2_VERSION=${{ env.P2_VERSION }}
+            CURL_VERSION=${{ env.CURL_VERSION }}
           tags: |
             dm2mf/tox-bootstrapd:debian
             dm2mf/tox-bootstrapd:debian-trixie
@@ -72,6 +76,10 @@ jobs:
           build-args: |
             TOX_VERSION=${{ env.TOX_VERSION }}
             ALPINE_VERSION=${{ env.ALPINE_VERSION }}
+            DEBIAN_VERSION=${{ env.DEBIAN_VERSION }}
+            GOLANG_VERSION=${{ env.GOLANG_VERSION }}
+            P2_VERSION=${{ env.P2_VERSION }}
+            CURL_VERSION=${{ env.CURL_VERSION }}
           tags: |
             dm2mf/tox-bootstrapd:alpine${{ env.ALPINE_VERSION }}
             dm2mf/tox-bootstrapd:alpine
@@ -112,7 +120,11 @@ jobs:
           platforms: linux/amd64
           build-args: |
             TOX_VERSION=${{ env.TOX_VERSION }}
+            ALPINE_VERSION=${{ env.ALPINE_VERSION }}
             DEBIAN_VERSION=${{ env.DEBIAN_VERSION }}
+            GOLANG_VERSION=${{ env.GOLANG_VERSION }}
+            P2_VERSION=${{ env.P2_VERSION }}
+            CURL_VERSION=${{ env.CURL_VERSION }}
           tags: dm2mf/tox-bootstrapd:debian-testing
 
       - name: Build and push Alpine testing image
@@ -125,4 +137,8 @@ jobs:
           build-args: |
             TOX_VERSION=${{ env.TOX_VERSION }}
             ALPINE_VERSION=${{ env.ALPINE_VERSION }}
+            DEBIAN_VERSION=${{ env.DEBIAN_VERSION }}
+            GOLANG_VERSION=${{ env.GOLANG_VERSION }}
+            P2_VERSION=${{ env.P2_VERSION }}
+            CURL_VERSION=${{ env.CURL_VERSION }}
           tags: dm2mf/tox-bootstrapd:alpine-testing

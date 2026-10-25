@@ -1,11 +1,20 @@
+ARG GOLANG_VERSION
+ARG ALPINE_VERSION
 ARG DEBIAN_VERSION
+ARG P2_VERSION
+ARG TOX_VERSION
+ARG CURL_VERSION
+
+FROM golang:${GOLANG_VERSION} AS p2-build
+
+ARG P2_VERSION
+ENV P2_VERSION=${P2_VERSION}
+WORKDIR /src
+RUN git clone https://github.com/wrouesnel/p2cli.git -b ${P2_VERSION} . \
+  && go run mage.go binary \
+  && test -x /src/p2
 
 FROM debian:${DEBIAN_VERSION} AS build
-
-ARG TOX_VERSION
-ENV TOX_VERSION=${TOX_VERSION}
-
-RUN mkdir -p /build
 
 RUN apt update && apt install -y \
     build-essential \
@@ -17,9 +26,10 @@ RUN apt update && apt install -y \
     libtool \
     file
 
+ARG TOX_VERSION
 RUN mkdir -p /build \
   && cd /build \
-  && git clone https://github.com/TokTok/c-toxcore --recursive -b $TOX_VERSION c-toxcore \
+  && git clone https://github.com/TokTok/c-toxcore --recursive -b ${TOX_VERSION} c-toxcore \
   && cd c-toxcore \
   && cmake -S . -B build \
       -DCMAKE_BUILD_TYPE=Release \
@@ -33,12 +43,13 @@ RUN mkdir -p /build \
   && cmake --install build --prefix /build/out \
   && test -x /build/out/bin/tox-bootstrapd
 
-FROM debian:${DEBIAN_VERSION}
-RUN apt update && apt-get install -y  bash python3-jinja2 python3-requests
-RUN mkdir -p /opt/tox /var/lib/tox-bootstrapd /etc
+FROM alpine/curl:${CURL_VERSION}
 
-COPY --from=build /build/out/bin/tox-bootstrapd /opt/tox/
-COPY --from=build /build/c-toxcore/other/bootstrap_daemon/tox-bootstrapd.conf /opt/tox/tox-bootstrapd.conf
+RUN mkdir -p /var/lib/tox-bootstrapd
+
+COPY --from=p2-build /src/p2 /usr/local/bin/p2
+COPY --from=build /build/out/bin/tox-bootstrapd /usr/local/bin//tox-bootstrapd
+COPY --from=build /build/c-toxcore/other/bootstrap_daemon/tox-bootstrapd.conf /etc/tox-bootstrapd.conf
 
 ENV NODES_URL=https://nodes.tox.chat/json \
   PORT=33445 \
@@ -54,8 +65,6 @@ ENV NODES_URL=https://nodes.tox.chat/json \
 
 ADD entrypoint.sh /entrypoint.sh
 ADD tox-bootstrapd.conf.j2 /opt/tox/tox-bootstrapd.conf.j2
-ADD render.py /opt/tox/render.py
-RUN chmod +x /entrypoint.sh /opt/tox/render.py
 
 EXPOSE 3389/tcp
 EXPOSE 33445/tcp
