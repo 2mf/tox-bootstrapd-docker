@@ -2,9 +2,8 @@ ARG GOLANG_VERSION
 ARG ALPINE_VERSION
 ARG P2_VERSION
 ARG TOX_VERSION
-ARG CURL_VERSION
 
-FROM golang:${GOLANG_VERSION} AS p2-build
+FROM golang:${GOLANG_VERSION}-alpine AS p2-build
 
 ARG P2_VERSION
 ENV P2_VERSION=${P2_VERSION}
@@ -45,7 +44,9 @@ RUN mkdir -p /build \
   && cmake --install build --prefix /build/out \
   && test -x /build/out/bin/tox-bootstrapd
 
-FROM alpine/curl:${CURL_VERSION}
+FROM alpine:${ALPINE_VERSION}
+
+RUN apk add --no-cache curl
 
 RUN mkdir -p /var/lib/tox-bootstrapd
 
