@@ -1,0 +1,43 @@
+ARG ALPINE_VERSION
+ARG TOX_VERSION
+
+FROM alpine:${ALPINE_VERSION} AS build
+
+RUN apk add --no-cache \
+    build-base \
+    cmake \
+    git \
+    linux-headers \
+    pkgconf \
+    libsodium-dev \
+    libsodium-static \
+    libconfig-dev \
+    libconfig-static \
+    binutils \
+    file \
+    xz
+
+ARG TOX_VERSION
+RUN mkdir -p /build/dist \
+  && cd /build \
+  && git clone https://github.com/TokTok/c-toxcore --recursive -b ${TOX_VERSION} c-toxcore \
+  && cd c-toxcore \
+  && cmake -S . -B build \
+      -DCMAKE_BUILD_TYPE=Release \
+      -DENABLE_SHARED=OFF \
+      -DENABLE_STATIC=ON \
+      -DBOOTSTRAP_DAEMON=ON \
+      -DBUILD_TOXAV=OFF \
+      -DUNITTEST=OFF \
+      -DCMAKE_EXE_LINKER_FLAGS="-static" \
+  && cmake --build build --parallel \
+  && cmake --install build --prefix /build/out \
+  && test -x /build/out/bin/tox-bootstrapd
+
+RUN cp -v /build/out/bin/tox-bootstrapd /build/dist/tox-bootstrapd-debug \
+  && strip -o /build/dist/tox-bootstrapd /build/dist/tox-bootstrapd-debug \
+  && file /build/dist/tox-bootstrapd
+
+FROM scratch AS export
+
+COPY --from=build /build/dist/ ./

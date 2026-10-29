@@ -1,0 +1,78 @@
+name: Build and attach static binaries
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { platform: linux/amd64,   name: x86_64 }
+          - { platform: linux/arm64,   name: aarch64 }
+          - { platform: linux/arm/v7,  name: armv7 }
+          - { platform: linux/arm/v6,  name: armv6 }
+          - { platform: linux/riscv64, name: riscv64 }
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.release.tag_name || github.ref }}
+
+      - name: Load build versions
+        run: grep -Ev '^[[:space:]]*(#|$)' build/image-versions.env >> "$GITHUB_ENV"
+
+      - uses: docker/setup-qemu-action@v4
+      - uses: docker/setup-buildx-action@v4
+
+      - name: Build static binary
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: Dockerfile-binary
+          target: export
+          platforms: ${{ matrix.platform }}
+          outputs: type=local,dest=out
+          build-args: |
+            ALPINE_VERSION=${{ env.ALPINE_VERSION }}
+            TOX_VERSION=${{ env.TOX_VERSION }}
+
+      - name: Prepare assets
+        run: |
+          mkdir dist
+          cp out/tox-bootstrapd "dist/tox-bootstrapd-linux-${{ matrix.name }}"
+          cp out/tox-bootstrapd-debug "dist/tox-bootstrapd-linux-${{ matrix.name }}-debug"
+          cd dist && sha256sum * > "SHA256SUMS-${{ matrix.name }}"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tox-bootstrapd-${{ matrix.name }}
+          path: dist/*
+
+  publish:
+    needs: build
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Upload to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cat dist/SHA256SUMS-* | sort -k2 > dist/SHA256SUMS
+          rm dist/SHA256SUMS-*
+          gh release upload "${{ github.event.release.tag_name }}" dist/* \
+            --repo "${{ github.repository }}" --clobber
