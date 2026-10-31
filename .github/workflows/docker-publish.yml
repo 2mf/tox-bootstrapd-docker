@@ -6,31 +6,32 @@ on:
   push:
     branches:
       - dev
+    tags:
+      - 'v*'
 
 permissions:
   contents: read
 
 jobs:
   release:
-    # Only publish production tags from a release whose target is master.
-    if: >-
-      github.event_name == 'release' &&
-      github.event.release.target_commitish == 'master'
+    # Only publish production images for version tags.
+    if: github.ref_type == 'tag'
     runs-on: ubuntu-latest
 
     steps:
       - name: Check out the release tag
         uses: actions/checkout@v6
         with:
-          ref: ${{ github.event.release.tag_name }}
+          ref: ${{ github.ref }}
+          fetch-depth: 0
 
       - name: Load build versions
         shell: bash
         run: |
           grep -Ev '^[[:space:]]*(#|$)' build/image-versions.env >> "$GITHUB_ENV"
 
-          RELEASE_VERSION="${{ github.event.release.tag_name }}"
-          echo "IMAGE_VERSION=${RELEASE_VERSION#v}" >> "$GITHUB_ENV"
+          RELEASE_VERSION="${GITHUB_REF_NAME}"
+          echo "IMAGE_VERSION=${RELEASE_VERSION#}" >> "$GITHUB_ENV"
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v4
