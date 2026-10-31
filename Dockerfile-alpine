@@ -5,6 +5,8 @@ ARG TOX_VERSION
 
 FROM golang:${GOLANG_VERSION}-alpine AS p2-build
 
+RUN apk add --no-cache git
+
 ARG P2_VERSION
 ENV P2_VERSION=${P2_VERSION}
 WORKDIR /src
