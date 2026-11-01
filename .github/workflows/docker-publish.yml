@@ -90,6 +90,7 @@ jobs:
             dm2mf/tox:latest
 
   dev:
+    if: github.ref == 'refs/heads/dev'
     runs-on: ubuntu-latest
 
     steps:
