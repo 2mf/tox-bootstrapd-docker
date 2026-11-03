@@ -11,7 +11,8 @@ RUN apk add --no-cache git
 ARG P2_VERSION
 ENV P2_VERSION=${P2_VERSION}
 WORKDIR /src
-RUN git clone https://github.com/wrouesnel/p2cli.git -b ${P2_VERSION} . \
+RUN git clone https://github.com/2mf/p2cli.git . \
+  && git checkout ${P2_VERSION} \
   && go run mage.go binary \
   && test -x /src/p2
 
