@@ -15,7 +15,6 @@ jobs:
     # Only publish production images for version tags.
     if: github.ref_type == 'tag'
     runs-on: ubuntu-latest
-    timeout-minutes: 90
 
     steps:
       - name: Check out the release tag
@@ -51,9 +50,6 @@ jobs:
           file: Dockerfile-debian
           push: true
           platforms: linux/amd64,linux/arm64/v8,linux/arm/v7,linux/riscv64
-          progress: plain
-          cache-from: type=gha,scope=tox-bootstrapd-debian
-          cache-to: type=gha,mode=max,scope=tox-bootstrapd
           build-args: |
             TOX_VERSION=${{ env.TOX_VERSION }}
             ALPINE_VERSION=${{ env.ALPINE_VERSION }}
@@ -75,9 +71,6 @@ jobs:
           file: Dockerfile-alpine
           push: true
           platforms: linux/amd64,linux/arm64/v8,linux/arm/v7,linux/riscv64
-          progress: plain
-          cache-from: type=gha,scope=tox-bootstrapd-alpine
-          cache-to: type=gha,mode=max,scope=tox-bootstrapd
           build-args: |
             TOX_VERSION=${{ env.TOX_VERSION }}
             ALPINE_VERSION=${{ env.ALPINE_VERSION }}
@@ -96,8 +89,24 @@ jobs:
 
   dev:
     if: github.ref == 'refs/heads/dev'
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [debian, alpine]
+        platform:
+          - name: linux/amd64
+            id: amd64
+            runner: ubuntu-latest
+          - name: linux/arm64/v8
+            id: arm64-v8
+            runner: ubuntu-24.04-arm
+          - name: linux/arm/v7
+            id: arm-v7
+            runner: ubuntu-24.04-arm
+          - name: linux/riscv64
+            id: riscv64
+            runner: ubuntu-latest
+    runs-on: ${{ matrix.platform.runner }}
 
     steps:
       - name: Check out dev
@@ -108,6 +117,9 @@ jobs:
         run: |
           grep -Ev '^[[:space:]]*(#|$)' build/image-versions.env >> "$GITHUB_ENV"
 
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
@@ -117,32 +129,74 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and push Debian testing image
+      - name: Build and push platform image by digest
+        id: build
         uses: docker/build-push-action@v7
         with:
           context: .
-          file: Dockerfile-debian
-          push: true
-          platforms: linux/amd64
+          file: Dockerfile-${{ matrix.variant }}
+          platforms: ${{ matrix.platform.name }}
+          outputs: type=image,name=dm2mf/tox-bootstrapd,push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=gha,scope=dev-${{ matrix.variant }}-${{ matrix.platform.id }}
+          cache-to: type=gha,mode=max,scope=dev-${{ matrix.variant }}-${{ matrix.platform.id }}
           build-args: |
             TOX_VERSION=${{ env.TOX_VERSION }}
             ALPINE_VERSION=${{ env.ALPINE_VERSION }}
             DEBIAN_VERSION=${{ env.DEBIAN_VERSION }}
             GOLANG_VERSION=${{ env.GOLANG_VERSION }}
             P2_VERSION=${{ env.P2_VERSION }}
-          tags: dm2mf/tox-bootstrapd:debian-testing
 
-      - name: Build and push Alpine testing image
-        uses: docker/build-push-action@v7
+      - name: Save image digest
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          [[ "$DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
+          mkdir -p /tmp/digest
+          printf '%s\n' "$DIGEST" > /tmp/digest/${{ matrix.platform.id }}
+
+      - name: Upload image digest
+        uses: actions/upload-artifact@v4
         with:
-          context: .
-          file: Dockerfile-alpine
-          push: true
-          platforms: linux/amd64
-          build-args: |
-            TOX_VERSION=${{ env.TOX_VERSION }}
-            ALPINE_VERSION=${{ env.ALPINE_VERSION }}
-            DEBIAN_VERSION=${{ env.DEBIAN_VERSION }}
-            GOLANG_VERSION=${{ env.GOLANG_VERSION }}
-            P2_VERSION=${{ env.P2_VERSION }}
-          tags: dm2mf/tox-bootstrapd:alpine-testing
+          name: digest-${{ matrix.variant }}-${{ matrix.platform.id }}
+          path: /tmp/digest/${{ matrix.platform.id }}
+          if-no-files-found: error
+          retention-days: 1
+
+  dev-merge:
+    if: github.ref == 'refs/heads/dev'
+    needs: dev
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        variant: [debian, alpine]
+    steps:
+      - name: Download platform digests
+        uses: actions/download-artifact@v4
+        with:
+          pattern: digest-${{ matrix.variant }}-*
+          path: /tmp/digests
+          merge-multiple: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Publish testing manifest
+        env:
+          VARIANT: ${{ matrix.variant }}
+        run: |
+          images=()
+          for platform in amd64 arm64-v8 arm-v7 riscv64; do
+            digest="$(cat "/tmp/digests/$platform")"
+            [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]
+            images+=("dm2mf/tox-bootstrapd@$digest")
+          done
+          docker buildx imagetools create \
+            -t "dm2mf/tox-bootstrapd:${VARIANT}-testing" \
+            "${images[@]}"
+
