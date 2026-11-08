@@ -4,18 +4,19 @@ ARG TOX_VERSION
 FROM alpine:${ALPINE_VERSION} AS build
 
 RUN apk add --no-cache \
-    build-base \
-    cmake \
-    git \
-    linux-headers \
-    pkgconf \
-    libsodium-dev \
-    libsodium-static \
-    libconfig-dev \
-    libconfig-static \
-    binutils \
-    file \
-    xz
+  ca-certificates \
+  build-base \
+  cmake \
+  git \
+  linux-headers \
+  pkgconf \
+  libsodium-dev \
+  libsodium-static \
+  libconfig-dev \
+  libconfig-static \
+  binutils \
+  file \
+  xz
 
 ARG TOX_VERSION
 RUN mkdir -p /build/dist \

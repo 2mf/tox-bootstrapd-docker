@@ -5,7 +5,9 @@ ARG TOX_VERSION
 
 FROM golang:${GOLANG_VERSION}-alpine AS p2-build
 
-RUN apk add --no-cache git
+RUN apk add --no-cache \
+  ca-certificates \
+  git
 
 ARG P2_VERSION
 ENV P2_VERSION=${P2_VERSION}
@@ -18,18 +20,18 @@ RUN git clone https://github.com/2mf/p2cli.git . \
 FROM alpine:${ALPINE_VERSION} AS build
 
 RUN apk add --no-cache \
-    ca-certificates \
-    build-base \
-    cmake \
-    git \
-    linux-headers \
-    pkgconf \
-    libsodium-dev \
-    libsodium-static \
-    libconfig-dev \
-    libconfig-static \
-    binutils \
-    file
+  ca-certificates \
+  build-base \
+  cmake \
+  git \
+  linux-headers \
+  pkgconf \
+  libsodium-dev \
+  libsodium-static \
+  libconfig-dev \
+  libconfig-static \
+  binutils \
+  file
 
 ARG TOX_VERSION
 RUN mkdir -p /build \
