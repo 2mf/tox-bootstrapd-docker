@@ -10,15 +10,15 @@ permissions:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
       matrix:
         include:
-          - { platform: linux/amd64,    name: x86_64 }
-          - { platform: linux/arm64/v8, name: aarch64 }
-          - { platform: linux/arm/v7,   name: armv7 }
-          - { platform: linux/riscv64,  name: riscv64 }
+          - { platform: linux/amd64,    name: x86_64,  runner: ubuntu-latest }
+          - { platform: linux/arm64/v8, name: aarch64, runner: ubuntu-26.04-arm }
+          - { platform: linux/arm/v7,   name: armv7,   runner: ubuntu-26.04-arm }
+          - { platform: linux/riscv64,  name: riscv64, runner: ubuntu-26.04-arm }
 
     steps:
       - uses: actions/checkout@v6
