@@ -14,22 +14,35 @@ jobs:
   release:
     # Only publish production images for version tags.
     if: github.ref_type == 'tag'
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [debian, alpine]
+        platform:
+          - name: linux/amd64
+            id: amd64
+            runner: ubuntu-latest
+          - name: linux/arm64/v8
+            id: arm64-v8
+            runner: ubuntu-26.04-arm
+          - name: linux/arm/v7
+            id: arm-v7
+            runner: ubuntu-26.04-arm
+          - name: linux/riscv64
+            id: riscv64
+            runner: ubuntu-26.04-arm
+    runs-on: ${{ matrix.platform.runner }}
 
     steps:
       - name: Check out the release tag
         uses: actions/checkout@v6
         with:
           ref: ${{ github.ref }}
-          fetch-depth: 0
 
       - name: Load build versions
         shell: bash
         run: |
           grep -Ev '^[[:space:]]*(#|$)' build/image-versions.env >> "$GITHUB_ENV"
-
-          RELEASE_VERSION="${GITHUB_REF_NAME}"
-          echo "IMAGE_VERSION=${RELEASE_VERSION#}" >> "$GITHUB_ENV"
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v4
@@ -43,49 +56,98 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and push Debian images
+      - name: Build and push platform image by digest
+        id: build
         uses: docker/build-push-action@v7
         with:
           context: .
-          file: Dockerfile-debian
-          push: true
-          platforms: linux/amd64,linux/arm64/v8,linux/arm/v7,linux/riscv64
+          file: Dockerfile-${{ matrix.variant }}
+          platforms: ${{ matrix.platform.name }}
+          outputs: type=image,name=dm2mf/tox-bootstrapd,push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=gha,scope=release-${{ matrix.variant }}-${{ matrix.platform.id }}
+          cache-to: type=gha,mode=max,scope=release-${{ matrix.variant }}-${{ matrix.platform.id }}
           build-args: |
             TOX_VERSION=${{ env.TOX_VERSION }}
             ALPINE_VERSION=${{ env.ALPINE_VERSION }}
             DEBIAN_VERSION=${{ env.DEBIAN_VERSION }}
             GOLANG_VERSION=${{ env.GOLANG_VERSION }}
             P2_VERSION=${{ env.P2_VERSION }}
-          tags: |
-            dm2mf/tox-bootstrapd:debian
-            dm2mf/tox-bootstrapd:debian-trixie
-            dm2mf/tox-bootstrapd:${{ env.IMAGE_VERSION }}-debian
-            dm2mf/tox:debian
-            dm2mf/tox:debian-trixie
-            dm2mf/tox:${{ env.IMAGE_VERSION }}-debian
 
-      - name: Build and push Alpine images
-        uses: docker/build-push-action@v7
+      - name: Save image digest
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          [[ "$DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
+          mkdir -p /tmp/digest
+          printf '%s\n' "$DIGEST" > /tmp/digest/${{ matrix.platform.id }}
+
+      - name: Upload image digest
+        uses: actions/upload-artifact@v4
         with:
-          context: .
-          file: Dockerfile-alpine
-          push: true
-          platforms: linux/amd64,linux/arm64/v8,linux/arm/v7,linux/riscv64
-          build-args: |
-            TOX_VERSION=${{ env.TOX_VERSION }}
-            ALPINE_VERSION=${{ env.ALPINE_VERSION }}
-            DEBIAN_VERSION=${{ env.DEBIAN_VERSION }}
-            GOLANG_VERSION=${{ env.GOLANG_VERSION }}
-            P2_VERSION=${{ env.P2_VERSION }}
-          tags: |
-            dm2mf/tox-bootstrapd:alpine${{ env.ALPINE_VERSION }}
-            dm2mf/tox-bootstrapd:alpine
-            dm2mf/tox-bootstrapd:${{ env.IMAGE_VERSION }}-alpine
-            dm2mf/tox-bootstrapd:latest
-            dm2mf/tox:alpine${{ env.ALPINE_VERSION }}
-            dm2mf/tox:alpine
-            dm2mf/tox:${{ env.IMAGE_VERSION }}-alpine
-            dm2mf/tox:latest
+          name: release-digest-${{ matrix.variant }}-${{ matrix.platform.id }}
+          path: /tmp/digest/${{ matrix.platform.id }}
+          if-no-files-found: error
+          retention-days: 1
+
+  release-merge:
+    if: github.ref_type == 'tag'
+    needs: release
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [debian, alpine]
+    steps:
+      - name: Check out the release tag
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Load build versions
+        run: |
+          grep -Ev '^[[:space:]]*(#|$)' build/image-versions.env >> "$GITHUB_ENV"
+          echo "IMAGE_VERSION=${GITHUB_REF_NAME}" >> "$GITHUB_ENV"
+
+      - name: Download platform digests
+        uses: actions/download-artifact@v4
+        with:
+          pattern: release-digest-${{ matrix.variant }}-*
+          path: /tmp/digests
+          merge-multiple: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Publish release manifests
+        env:
+          VARIANT: ${{ matrix.variant }}
+        run: |
+          images=()
+          for platform in amd64 arm64-v8 arm-v7 riscv64; do
+            digest="$(cat "/tmp/digests/$platform")"
+            [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]
+            images+=("dm2mf/tox-bootstrapd@$digest")
+          done
+
+          if [[ "$VARIANT" == "debian" ]]; then
+            tags=(debian debian-trixie "${IMAGE_VERSION}-debian")
+          else
+            tags=("alpine${ALPINE_VERSION}" alpine "${IMAGE_VERSION}-alpine" latest)
+          fi
+
+          for repo in dm2mf/tox-bootstrapd dm2mf/tox; do
+            tag_args=()
+            for tag in "${tags[@]}"; do
+              tag_args+=(-t "$repo:$tag")
+            done
+            docker buildx imagetools create "${tag_args[@]}" "${images[@]}"
+          done
 
   dev:
     if: github.ref == 'refs/heads/dev'
