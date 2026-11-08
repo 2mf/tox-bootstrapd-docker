@@ -99,13 +99,13 @@ jobs:
             runner: ubuntu-latest
           - name: linux/arm64/v8
             id: arm64-v8
-            runner: ubuntu-24.04-arm
+            runner: ubuntu-26.04-arm
           - name: linux/arm/v7
             id: arm-v7
-            runner: ubuntu-24.04-arm
+            runner: ubuntu-26.04-arm
           - name: linux/riscv64
             id: riscv64
-            runner: ubuntu-latest
+            runner: ubuntu-26.04-arm
     runs-on: ${{ matrix.platform.runner }}
 
     steps:
