@@ -1,8 +1,6 @@
 name: Build and publish Docker images
 
 on:
-  release:
-    types: [published]
   push:
     branches:
       - dev
@@ -17,6 +15,7 @@ jobs:
     # Only publish production images for version tags.
     if: github.ref_type == 'tag'
     runs-on: ubuntu-latest
+    timeout-minutes: 90
 
     steps:
       - name: Check out the release tag
@@ -52,6 +51,9 @@ jobs:
           file: Dockerfile-debian
           push: true
           platforms: linux/amd64,linux/arm64/v8,linux/arm/v7,linux/riscv64
+          progress: plain
+          cache-from: type=gha,scope=tox-bootstrapd-debian
+          cache-to: type=gha,mode=max,scope=tox-bootstrapd
           build-args: |
             TOX_VERSION=${{ env.TOX_VERSION }}
             ALPINE_VERSION=${{ env.ALPINE_VERSION }}
@@ -73,6 +75,9 @@ jobs:
           file: Dockerfile-alpine
           push: true
           platforms: linux/amd64,linux/arm64/v8,linux/arm/v7,linux/riscv64
+          progress: plain
+          cache-from: type=gha,scope=tox-bootstrapd-alpine
+          cache-to: type=gha,mode=max,scope=tox-bootstrapd
           build-args: |
             TOX_VERSION=${{ env.TOX_VERSION }}
             ALPINE_VERSION=${{ env.ALPINE_VERSION }}
@@ -92,6 +97,7 @@ jobs:
   dev:
     if: github.ref == 'refs/heads/dev'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     steps:
       - name: Check out dev

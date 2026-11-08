@@ -18,7 +18,9 @@ RUN git clone https://github.com/2mf/p2cli.git . \
 
 FROM debian:${DEBIAN_VERSION} AS build
 
-RUN apt update && apt install -y \
+RUN apt update \
+  && apt install -y --no-install-recommends \
+    ca-certificates \
     build-essential \
     cmake \
     git \
@@ -26,7 +28,8 @@ RUN apt update && apt install -y \
     libsodium-dev \
     libconfig-dev \
     libtool \
-    file
+    file \
+  && update-ca-certificates
 
 ARG TOX_VERSION
 RUN mkdir -p /build \
@@ -52,7 +55,7 @@ RUN apk add --no-cache curl
 RUN mkdir -p /var/lib/tox-bootstrapd
 
 COPY --from=p2-build /src/p2 /usr/local/bin/p2
-COPY --from=build /build/out/bin/tox-bootstrapd /usr/local/bin//tox-bootstrapd
+COPY --from=build /build/out/bin/tox-bootstrapd /usr/local/bin/tox-bootstrapd
 COPY --from=build /build/c-toxcore/other/bootstrap_daemon/tox-bootstrapd.conf /etc/tox-bootstrapd.conf
 
 ENV NODES_URL=https://nodes.tox.chat/json \
@@ -67,8 +70,8 @@ ENV NODES_URL=https://nodes.tox.chat/json \
   ENABLE_MOTD=true \
   MOTD=tox-bootstrapd
 
-ADD entrypoint.sh /entrypoint.sh
-ADD tox-bootstrapd.conf.j2 /opt/tox/tox-bootstrapd.conf.j2
+COPY entrypoint.sh /entrypoint.sh
+COPY tox-bootstrapd.conf.j2 /opt/tox/tox-bootstrapd.conf.j2
 
 EXPOSE 3389/tcp
 EXPOSE 33445/tcp
